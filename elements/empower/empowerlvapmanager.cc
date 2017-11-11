@@ -19,6 +19,7 @@
 #include <click/straccum.hh>
 #include <click/args.hh>
 #include <click/error.hh>
+#include <click/router.hh>
 #include <clicknet/wifi.h>
 #include <clicknet/llc.h>
 #include <clicknet/ether.h>
@@ -37,7 +38,8 @@ CLICK_DECLS
 
 EmpowerLVAPManager::EmpowerLVAPManager() :
 		_e11k(0), _ebs(0), _eauthr(0), _eassor(0), _edeauthr(0), _ers(0),
-		_cqm(0), _mtbl(0), _timer(this), _seq(0), _period(5000), _debug(false) {
+		_cqm(0), _mtbl(0), _timer(this), _seq(0), _period(5000), _debug(false),
+		_hello_seq_ctr(0) {
 }
 
 EmpowerLVAPManager::~EmpowerLVAPManager() {
@@ -51,12 +53,59 @@ int EmpowerLVAPManager::initialize(ErrorHandler *) {
 }
 
 void EmpowerLVAPManager::run_timer(Timer *) {
-	// send hello packet
+	// send hello packet and increase hello counter if connected
 	send_hello();
+	
+	if (_ports.size() > 0) {
+		_hello_seq_ctr++;
+	}
+	
+	/* If sequence counter gets to high, it means that the
+	controller (ac) does not send the hello packets back anymore
+	-> consider dead and start reconnect procedure */
+	if (_hello_seq_ctr > 5)
+	{
+		click_chatter("Controller does not seem to respond to hello packets anymore -> dead?");
+		_hello_seq_ctr = 0;
+		/* TODO: notify socket element to start reconnect procedure */
+		if (!notify_socket_restart()) {
+			click_chatter("EmpSocket restart notification failed");
+		}
+		else {
+			click_chatter("EmpSocket restart notified");
+		}
+	}
+	
 	// re-schedule the timer with some jitter
 	unsigned max_jitter = _period / 10;
 	unsigned j = click_random(0, 2 * max_jitter);
 	_timer.schedule_after_msec(_period + j - max_jitter);
+}
+
+bool EmpowerLVAPManager::notify_socket_restart() {
+	/* Helper function. Search for EmpSocket element in configuration and
+	call restart handler */
+	const Router *r = this->router();
+
+	/* Find our EmpSocket element */
+	Vector<Element *> elms = r->elements();
+	Element *e = 0;
+	for (const auto el : elms) {
+		if (strcmp(el->class_name(), "EmpSocket") == 0) {
+				e = el;
+				break;
+		}
+	}
+
+	if (e != 0) {
+		const Handler *h = r->handler(e, "restart");
+		h->call_read(e);
+		return true;
+	}
+	else {
+		click_chatter("lucas: Could not find empsocket element");
+		return false;
+		}
 }
 
 void cp_slashvec(const String &str, Vector<String> &conf) {
@@ -1853,6 +1902,17 @@ int EmpowerLVAPManager::handle_del_mcast_receiver(Packet *p, uint32_t offset) {
 	return 0;
 }
 
+int EmpowerLVAPManager::handle_empower_hello(Packet *p, uint32_t offset) {
+	
+	struct empower_hello *q = (struct empower_hello *) (p->data() + offset);
+	
+	/* Decrease hello packet counter */
+	_hello_seq_ctr--;
+	click_chatter("Got hello response seq %d, counter now at %d", q->seq(), _hello_seq_ctr);
+	
+	return 0;
+}
+
 void EmpowerLVAPManager::push(int, Packet *p) {
 
 	/* This is a control packet coming from a Socket
@@ -1874,6 +1934,9 @@ void EmpowerLVAPManager::push(int, Packet *p) {
 	while (offset < p->length()) {
 		struct empower_header *w = (struct empower_header *) (p->data() + offset);
 		switch (w->type()) {
+		case EMPOWER_PT_HELLO:
+			handle_empower_hello(p, offset);
+			break;
 		case EMPOWER_PT_ADD_LVAP:
 			handle_add_lvap(p, offset);
 			break;

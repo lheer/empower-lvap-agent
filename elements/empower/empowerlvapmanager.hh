@@ -274,6 +274,7 @@ public:
 	int handle_lvap_status_request(Packet *, uint32_t);
 	int handle_vap_status_request(Packet *, uint32_t);
 	int handle_port_status_request(Packet *, uint32_t);
+	int handle_empower_hello(Packet *, uint32_t);
 
 	void send_hello();
 	void send_probe_request(EtherAddress, String, EtherAddress, int, empower_bands_types, empower_bands_types);
@@ -348,6 +349,7 @@ private:
 	void compute_bssid_mask();
 
 	void send_message(Packet *);
+	bool notify_socket_restart();
 
 	class Empower11k *_e11k;
 	class EmpowerBeaconSource *_ebs;
@@ -369,6 +371,7 @@ private:
 	EtherAddress _wtp;
 	unsigned int _period; // msecs
 	bool _debug;
+	int _hello_seq_ctr;
 
 	static int write_handler(const String &, Element *, void *, ErrorHandler *);
 	static String read_handler(Element *, void *);
