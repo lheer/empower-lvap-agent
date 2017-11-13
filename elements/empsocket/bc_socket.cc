@@ -1,5 +1,6 @@
 #include <click/config.h>
 #include <click/glue.hh>
+#include <click/string.hh>
 #include <unistd.h>
 #include <sys/types.h> 
 #include <cstring>
@@ -14,7 +15,7 @@ BroadcastSocket::BroadcastSocket()
     inited = false;
 }
 
-bool BroadcastSocket::init(String bc_ip, unsigned short port, unsigned int recv_timeout_us)
+bool BroadcastSocket::init(String bc_ip, unsigned short port, EtherAddress wtp)
 {
     /* Create broadcast socket */
     if ((bc_socket = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
@@ -41,7 +42,7 @@ bool BroadcastSocket::init(String bc_ip, unsigned short port, unsigned int recv_
     /* Set timeout for recveive socket */
     struct timeval read_timeout;
     read_timeout.tv_sec = 0;
-    read_timeout.tv_usec = recv_timeout_us;
+    read_timeout.tv_usec = 1000;
     
     if (setsockopt(recv_socket, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof(read_timeout)) < 0)
     {
@@ -64,13 +65,17 @@ bool BroadcastSocket::init(String bc_ip, unsigned short port, unsigned int recv_
         return false;
     }
     
+    /* Construct broadcast packet */
+    bc_packet[0] = 0x05;
+    memcpy(bc_packet+1, wtp.unparse_colon().c_str(), 17);
+    
     inited = true;
     return true;
 }
 
 bool BroadcastSocket::send_bc()
 {
-    ssize_t ret = sendto(bc_socket, "ping", 4,  0, (struct sockaddr *)&bc_addr, sizeof(bc_addr));
+    ssize_t ret = sendto(bc_socket, bc_packet, sizeof(bc_packet), 0, (struct sockaddr *)&bc_addr, sizeof(bc_addr));
     if (ret == -1)
     {
         err = "Sending broadcast failed";

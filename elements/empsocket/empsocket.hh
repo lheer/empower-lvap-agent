@@ -5,6 +5,7 @@
 #include <click/task.hh>
 #include <click/timer.hh>
 #include <click/notifier.hh>
+#include <click/etheraddress.hh>
 #include "../ip/iproutetable.hh"
 #include <sys/un.h>
 #include <click/handlercall.hh>
@@ -86,6 +87,7 @@ private:
   int init_socket(ErrorHandler *);
   bool have_master;
   BroadcastSocket bc_socket;
+  EtherAddress wtp;
 
   HandlerCall *_reconnect_call_h;
   

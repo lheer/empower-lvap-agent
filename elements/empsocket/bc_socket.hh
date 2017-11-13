@@ -2,8 +2,10 @@
 
 #include <click/config.h>
 #include <click/string.hh>
+#include <click/etheraddress.hh>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <stdint.h>
 
 CLICK_DECLS
 
@@ -20,7 +22,7 @@ class BroadcastSocket
         static unsigned int const BUFSIZE;
     
         BroadcastSocket();
-        bool init(String bc_ip="255.255.255.255", unsigned short port=8000, unsigned int recv_timeout_us=1000);
+        bool init(String bc_ip, unsigned short port, EtherAddress wtp);
         bool send_bc();
         struct bc_answer recv_answer();
         bool is_inited();
@@ -33,6 +35,7 @@ class BroadcastSocket
         struct sockaddr_in bc_addr,  recv_addr;
         String err;
         bool inited;
+        char bc_packet[18];
 };
 
 
