@@ -85,6 +85,9 @@ EmpSocket::configure(Vector<String> &conf, ErrorHandler *errh)
     return -1;
   socktype = socktype.upper();
 
+  /* Read mandatory WTP MAC address argument
+  Needed for inclusion in broadcast packet so the controller
+  knows our MAC address */
   if (args.read_m("WTP", wtp).execute() < 0)
     return -1;
 
@@ -186,7 +189,7 @@ EmpSocket::initialize(ErrorHandler *errh)
   // init bc socket
   if (!bc_socket.is_inited())
   {
-    if (!bc_socket.init("192.168.0.255", 4434, wtp))
+    if (!bc_socket.init("255.255.255.255", 4434, wtp))
     {
       click_chatter(bc_socket.get_err().c_str());
     }
