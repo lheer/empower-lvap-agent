@@ -90,7 +90,7 @@ bool EmpowerLVAPManager::notify_socket_restart() {
 	/* Find our EmpSocket element */
 	Vector<Element *> elms = r->elements();
 	Element *e = 0;
-	for (const auto el : elms) {
+	for (Element *el : elms) {
 		if (strcmp(el->class_name(), "EmpSocket") == 0) {
 				e = el;
 				break;
