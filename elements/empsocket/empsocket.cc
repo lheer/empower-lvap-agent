@@ -189,7 +189,7 @@ EmpSocket::initialize(ErrorHandler *errh)
   // init bc socket
   if (!bc_socket.is_inited())
   {
-    if (!bc_socket.init("255.255.255.255", 4434, wtp))
+    if (!bc_socket.init("192.168.0.255", 4434, wtp))
     {
       click_chatter(bc_socket.get_err().c_str());
     }
